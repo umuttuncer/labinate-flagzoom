@@ -40,6 +40,9 @@ is checked.
 
 ## 5. Post-release
 
-- [ ] Confirm live analytics events arrive from the production URL.
+- [ ] Confirm live analytics events arrive from the production URL: load the
+      live site in a real browser, then check the PostHog project for an
+      `app_open` event whose `properties.app` matches this `VITE_APP_ID`
+      (Activity tab, or a HogQL query via the API).
 - [ ] Update the portfolio tracker (issue/board) with the live URL and date.
 - [ ] File follow-up bugs as issues; do NOT keep polishing — next app.
