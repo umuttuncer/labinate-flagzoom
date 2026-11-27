@@ -18,6 +18,7 @@ It is **not** the `flag/` app in `Labinate/labinate-apps`; that one is the separ
 
 - `npm audit fix` (no `--force`): lockfile only, commit `cca233b`.
 - Tests: commit `a395e8f`, `vitest@^2.1.9` (devDependency, tests in `tests/`, outside the tsconfig `include`).
+- `npm run typecheck` (since `night2/M112`) = `tsc --noEmit -p tsconfig.test.json`: covers `src` + `tests` + `vitest.config.ts`, with `@types/node` for tests only (`tsconfig.json` sets `"types": []`, so `src` still cannot use Node globals).
 - The 2 critical advisories are in **vitest 2 / tinypool**: the Vitest UI/API server and worker-option prototype pollution. They only matter
   while the test runner is running, and nothing here starts the UI server. All of them are fixed only in vitest 5, which needs vite ≥6.4, so a vite major
   upgrade. vitest 3.2.7 was tried and still had the 2 criticals, so it was reverted. Not done.
