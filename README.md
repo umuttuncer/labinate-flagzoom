@@ -24,7 +24,7 @@ analytics baseline and `requirePro()` monetization hook.
 - `src/lib/storage.ts` — per-day game state + lifetime stats (streaks, guess
   distribution) in localStorage.
 - Monetization: post-game ad placeholder slot; `requirePro()` gates Practice
-  mode and ad removal (paywall stub tracks the funnel).
+  mode and ad removal (free preview unlock stub; see "Paywall (preview unlock)").
 
 ## Dev
 
@@ -66,3 +66,28 @@ What `src/lib/analytics.ts` sends, exactly:
 - Tests (`npm test`) cover the payload shape, the URL stripping and "no
   network without an endpoint"; `tests/setup.ts` makes any unmocked
   `fetch`/`sendBeacon` throw, so tests never send real events.
+
+## Paywall (preview unlock)
+
+`requirePro()` in `src/lib/monetization.ts` is a **stub**: a `confirm()`
+dialog that says "Preview unlock … nothing is charged" and, on OK, sets
+`localStorage.labinate_pro = "1"`. Events: `paywall_shown`, then
+`paywall_stub_unlocked {feature, provider: "stub"}` or `paywall_dismissed`.
+`purchase_clicked` / `purchase_completed` are reserved for a real provider,
+so free unlocks never show up as purchases.
+
+**A client-only flag is not protection.** Anyone can set `labinate_pro` in
+devtools, and everything in a static bundle is downloadable anyway. Use it
+for UX gating only; never put paid content behind it. A real entitlement
+check needs:
+
+1. A payment provider (Stripe Checkout, RevenueCat for store builds) — no
+   card data ever touches this app.
+2. A server (or serverless function) that receives the provider's signed
+   webhook / verifies the store receipt and records the entitlement.
+3. A user identity to attach the entitlement to (account or provider
+   customer id), plus "restore purchases" on a new device.
+4. The client asks the server (or verifies a short-lived signed token) for
+   the entitlement; paid content/features are served or unlocked server-side.
+5. Expiry, refunds and chargebacks revoke the entitlement; only then fire
+   `purchase_completed` (from the verified result, not the button click).
