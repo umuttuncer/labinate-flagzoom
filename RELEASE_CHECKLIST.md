@@ -12,7 +12,8 @@ is checked.
 - [ ] Analytics: `app_open` fires plus at least one feature event
       (check console in dev, or the collector).
 - [ ] Monetization: at least one path calls `requirePro()`; paywall funnel
-      events fire (paywall_shown / purchase_clicked / paywall_dismissed).
+      events fire (paywall_shown / paywall_stub_unlocked / paywall_dismissed;
+      purchase_* events only once a real provider is wired).
 - [ ] `npm run build` passes clean locally.
 
 ## 2. Deploy (web)

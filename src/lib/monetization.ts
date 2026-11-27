@@ -1,15 +1,26 @@
 /**
- * Labinate monetization hook (paywall stub).
+ * Labinate monetization hook (paywall stub — preview unlock).
  *
- * Every app gates at least one feature behind requirePro(). The stub tracks
- * funnel events (paywall_shown, purchase_clicked) so we can measure intent
- * before wiring a real payment provider. Replacing the stub with Stripe /
- * RevenueCat later only touches this file.
+ * Every app gates at least one feature behind requirePro(). No payment
+ * provider is wired yet, so the "paywall" is a native confirm() that unlocks
+ * the feature for free on this device. It tracks honest events only:
+ *   paywall_shown → paywall_stub_unlocked | paywall_dismissed
+ * purchase_clicked / purchase_completed are reserved for a real provider
+ * (Stripe / RevenueCat) so stub unlocks never inflate the purchase funnel.
+ * Replacing the stub later only touches this file.
+ *
+ * NOT protection: isPro() is a localStorage flag anyone can set in devtools.
+ * Never gate paid content with it — see README "Paywall (preview unlock)".
  */
 
 import { track } from "./analytics";
 
 const PRO_KEY = "labinate_pro";
+
+export const PAYWALL_STUB_MESSAGE =
+  "This is a Pro feature.\n\n" +
+  "Preview unlock: purchases are not available yet, nothing is charged. " +
+  "OK unlocks it for free on this device.";
 
 export function isPro(): boolean {
   return localStorage.getItem(PRO_KEY) === "1";
@@ -17,19 +28,16 @@ export function isPro(): boolean {
 
 /**
  * Gate a feature. Returns true if the user may proceed.
- * Stub behavior: shows a native confirm dialog as the "paywall" and
- * unlocks for free on accept, while tracking the real funnel events.
+ * Stub behavior: shows a native confirm dialog as a preview unlock and
+ * unlocks for free on accept.
  */
 export function requirePro(feature: string): boolean {
   if (isPro()) return true;
   track("paywall_shown", { feature });
-  const accepted = window.confirm(
-    "This is a Pro feature.\n\n(Paywall stub — real checkout not wired yet. OK simulates a purchase.)",
-  );
+  const accepted = window.confirm(PAYWALL_STUB_MESSAGE);
   if (accepted) {
-    track("purchase_clicked", { feature });
     localStorage.setItem(PRO_KEY, "1");
-    track("purchase_completed", { feature, provider: "stub" });
+    track("paywall_stub_unlocked", { feature, provider: "stub" });
     return true;
   }
   track("paywall_dismissed", { feature });
