@@ -163,3 +163,43 @@ describe("anonymous id", () => {
     expect(bodies().map((p) => p.distinct_id)).toEqual(["existing-id", "existing-id"]);
   });
 });
+
+describe("URL privacy: only origin + pathname leave the device", () => {
+  const LEAKY =
+    "https://umuttuncer.github.io/labinate-app-template/?invite=SECRET123&email=a%40b.c#access_token=TOKEN456";
+
+  it("$current_url has no query string or #fragment", async () => {
+    installBrowser(LEAKY);
+    const { sendBeacon, bodies } = captureBeacons();
+    const a = await loadAnalytics({ endpoint: ENDPOINT, key: KEY });
+    a.track("tapped");
+    a.initAnalytics();
+    for (const p of bodies()) {
+      expect(p.properties.$current_url).toBe("https://umuttuncer.github.io/labinate-app-template/");
+    }
+    const raw = sendBeacon.mock.calls.map(([, body]) => body).join("\n");
+    expect(raw).not.toMatch(/SECRET123|TOKEN456|invite=|access_token|a%40b\.c/);
+  });
+
+  it("referrer is reduced to origin + pathname", async () => {
+    installBrowser(PAGE, "https://search.example/results?q=my+private+query#top");
+    const { bodies } = captureBeacons();
+    const a = await loadAnalytics({ endpoint: ENDPOINT, key: KEY });
+    a.initAnalytics();
+    expect(bodies()[0].properties.referrer).toBe("https://search.example/results");
+  });
+
+  it("non-http referrer becomes 'other', empty referrer stays 'direct'", async () => {
+    installBrowser(PAGE, "android-app://com.example.app/path?x=1");
+    const { bodies } = captureBeacons();
+    (await loadAnalytics({ endpoint: ENDPOINT, key: KEY })).initAnalytics();
+    expect(bodies()[0].properties.referrer).toBe("other");
+  });
+
+  it("omits $current_url when the page URL is not http(s)", async () => {
+    installBrowser("file:///home/user/app/index.html?x=1");
+    const { bodies } = captureBeacons();
+    (await loadAnalytics({ endpoint: ENDPOINT, key: KEY })).track("tapped");
+    expect(bodies()[0].properties).not.toHaveProperty("$current_url");
+  });
+});
