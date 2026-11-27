@@ -9,11 +9,32 @@
  *
  * Every app must fire at least: app_open (automatic), plus its own
  * feature events via track().
+ *
+ * Privacy: URLs leave the device only as origin + pathname (see safeUrl) —
+ * query strings and #fragments can carry tokens, invite codes or emails.
  */
 
 const ENDPOINT: string | undefined = import.meta.env.VITE_ANALYTICS_ENDPOINT;
 const KEY: string | undefined = import.meta.env.VITE_ANALYTICS_KEY;
 const APP_ID: string = import.meta.env.VITE_APP_ID ?? "unknown-app";
+
+/**
+ * Reduce a URL to origin + pathname: drops the query string, the #fragment
+ * and any user:password@ part. Returns "" for anything that is not an
+ * absolute http(s) URL (relative paths, javascript:, data:, garbage), so the
+ * caller can omit the property instead of sending raw input.
+ */
+export function safeUrl(input: string | null | undefined): string {
+  if (typeof input !== "string" || input.trim() === "") return "";
+  let url: URL;
+  try {
+    url = new URL(input);
+  } catch {
+    return "";
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") return "";
+  return url.origin + url.pathname;
+}
 
 function getAnonId(): string {
   const key = "labinate_anon_id";
@@ -51,7 +72,8 @@ function send(payload: AnalyticsEvent): void {
           properties: {
             app: payload.app,
             session_id: payload.sessionId,
-            $current_url: location.href,
+            // undefined is dropped by JSON.stringify
+            $current_url: safeUrl(location.href) || undefined,
             ...payload.props,
           },
         }
@@ -81,7 +103,9 @@ export function track(
 /** Call once at app startup (main.tsx does this). */
 export function initAnalytics(): void {
   track("app_open", {
-    referrer: document.referrer || "direct",
+    referrer: document.referrer
+      ? safeUrl(document.referrer) || "other"
+      : "direct",
     standalone: window.matchMedia("(display-mode: standalone)").matches,
   });
 }
